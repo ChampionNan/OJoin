@@ -1,0 +1,46 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.gch
+*.pch
+*.so
+*.dylib
+*.dll
+*.lai
+*.la
+*.a
+*.lib
+*.exe
+*.out
+*.app
+*.bin
+*.elf
+
+# tex stuff:
+*.log
+*.synctex.gz
+*.dvi
+*.aux
+*.blg
+*.bbl
+*.fdb_latexmk
+*.fls
+*/.ipynb_checkpoints/
+
+# vscode stuff
+.vscode/
+
+# SGX enclave stuff
+Enclave_t.h
+Enclave_t.c
+Enclave_u.h
+Enclave_u.c
+.config_HW_PRERELEASE_x64
+.config_SIM_DEBUG_x64
+.config_SIM_RELEASE_x64
+*.pem
