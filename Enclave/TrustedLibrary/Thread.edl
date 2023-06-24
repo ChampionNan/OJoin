@@ -29,23 +29,23 @@
  *
  */
 
-#include <stdio.h>
+/* Thread.edl - EDL sample for trusted thread library. */
 
-#include "../App.h"
-#include "Enclave_u.h"
+enclave {
 
-/* ecall_libcxx_functions:
- *   Invokes standard C++ functions.
- */
-void ecall_libcxx_functions(void)
-{
-    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+    from "sgx_tstdc.edl" import sgx_thread_wait_untrusted_event_ocall, sgx_thread_set_untrusted_event_ocall, sgx_thread_setwait_untrusted_events_ocall, sgx_thread_set_multiple_untrusted_events_ocall;
 
-    ret = ecall_exception(global_eid);
-    if (ret != SGX_SUCCESS)
-        abort();
+    trusted {
+        /*
+         * Use SGX mutex.
+         */
+        public size_t ecall_increase_counter();
 
-    ret = ecall_map(global_eid);
-    if (ret != SGX_SUCCESS)
-        abort();
-}
+        /*
+         * Use SGX condition variables.
+         */
+        public void ecall_producer();
+        public void ecall_consumer();
+
+    };
+};

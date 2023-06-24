@@ -29,23 +29,27 @@
  *
  */
 
-#include <stdio.h>
 
-#include "../App.h"
-#include "Enclave_u.h"
+/* Libc.edl - EDL sample for trusted C library. */
 
-/* ecall_libcxx_functions:
- *   Invokes standard C++ functions.
- */
-void ecall_libcxx_functions(void)
-{
-    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+enclave {
+    
+    from "sgx_tstdc.edl" import sgx_oc_cpuidex;
 
-    ret = ecall_exception(global_eid);
-    if (ret != SGX_SUCCESS)
-        abort();
+    /* 
+     * A subset of the C99 standard is supported as well as SGX customized functions: 
+     *  sgx_cpuid, etc.
+     */
 
-    ret = ecall_map(global_eid);
-    if (ret != SGX_SUCCESS)
-        abort();
-}
+    trusted {
+        /*
+         * Utilize malloc/free in enclave.
+         */
+        public void ecall_malloc_free(void);
+
+        /*
+         * Utilize SGX version __cpuid() in enclave.
+         */
+        public void ecall_sgx_cpuid([out] int cpuinfo[4], int leaf);
+    };
+};

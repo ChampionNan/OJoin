@@ -29,23 +29,31 @@
  *
  */
 
-#include <stdio.h>
 
-#include "../App.h"
-#include "Enclave_u.h"
+#include <string.h>
+#include "sgx_cpuid.h"
 
-/* ecall_libcxx_functions:
- *   Invokes standard C++ functions.
+#include "sgx_trts.h"
+#include "../Enclave.h"
+#include "Enclave_t.h"
+
+/* ecall_malloc_free:
+ *   Uses malloc/free to allocate/free trusted memory.
  */
-void ecall_libcxx_functions(void)
+void ecall_malloc_free(void)
 {
-    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+    void *ptr = malloc(100);
+    assert(ptr != NULL);
+    memset(ptr, 0x0, 100);
+    free(ptr);
+}
 
-    ret = ecall_exception(global_eid);
-    if (ret != SGX_SUCCESS)
-        abort();
-
-    ret = ecall_map(global_eid);
+/* ecall_sgx_cpuid:
+ *   Uses sgx_cpuid to get CPU features and types.
+ */
+void ecall_sgx_cpuid(int cpuinfo[4], int leaf)
+{
+    sgx_status_t ret = sgx_cpuid(cpuinfo, leaf);
     if (ret != SGX_SUCCESS)
         abort();
 }

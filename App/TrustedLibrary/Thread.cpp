@@ -29,23 +29,70 @@
  *
  */
 
+
+#include <thread>
 #include <stdio.h>
+using namespace std;
 
 #include "../App.h"
 #include "Enclave_u.h"
 
-/* ecall_libcxx_functions:
- *   Invokes standard C++ functions.
- */
-void ecall_libcxx_functions(void)
+static size_t counter = 0;
+
+void increase_counter(void)
+{
+    size_t cnr = 0;
+    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+    ret = ecall_increase_counter(global_eid, &cnr);
+    if (cnr != 0) counter = cnr; 
+    if (ret != SGX_SUCCESS)
+        abort();
+}
+
+void data_producer(void)
 {
     sgx_status_t ret = SGX_ERROR_UNEXPECTED;
-
-    ret = ecall_exception(global_eid);
+    ret = ecall_producer(global_eid);
     if (ret != SGX_SUCCESS)
         abort();
+}
 
-    ret = ecall_map(global_eid);
+void data_consumer(void)
+{
+    sgx_status_t ret = SGX_ERROR_UNEXPECTED;
+    ret = ecall_consumer(global_eid);
     if (ret != SGX_SUCCESS)
         abort();
+}
+
+/* ecall_thread_functions:
+ *   Invokes thread functions including mutex, condition variable, etc.
+ */
+void ecall_thread_functions(void)
+{
+    thread adder1(increase_counter);
+    thread adder2(increase_counter);
+    thread adder3(increase_counter);
+    thread adder4(increase_counter);
+
+    adder1.join();
+    adder2.join();
+    adder3.join();
+    adder4.join();
+
+    assert(counter == 4*LOOPS_PER_THREAD);
+
+    printf("Info: executing thread synchronization, please wait...  \n");
+    /* condition variable */
+    thread consumer1(data_consumer);
+    thread producer0(data_producer);
+    thread consumer2(data_consumer);
+    thread consumer3(data_consumer);
+    thread consumer4(data_consumer);
+    
+    consumer1.join();
+    consumer2.join();
+    consumer3.join();
+    consumer4.join();
+    producer0.join();
 }
