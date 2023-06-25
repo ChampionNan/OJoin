@@ -123,14 +123,14 @@ enclave {
         public void ecall_pointer_isptr_readonly([in, isptr, readonly, size=len] buffer_t buf, size_t len);
         
         /*
-         * [sizefunc]:
+         * [sizefunc]: deprecated, use size instead with error value
          *      call a function to decide the size/length of the parameter; 
          * Note:
          *      User need to define and implement `get_buf_len' as:
          *      size_t get_buf_len(const char* buf); 
          */
 
-        public void ecall_pointer_sizefunc([sizefunc = get_buffer_len, in, out] char *buf);
+        public void ecall_pointer_sizefunc([size = 1, in, out] char *buf);
 
     };
 

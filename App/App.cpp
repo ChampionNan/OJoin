@@ -2,8 +2,8 @@
 #include <string.h>
 #include <assert.h>
 
-# include <unistd.h>
-# include <pwd.h>
+#include <unistd.h>
+#include <pwd.h>
 #include <time.h>
 
 #include "sgx_urts.h"
@@ -188,7 +188,9 @@ int SGX_CDECL main(int argc, char *argv[])
     //ecall_thread_functions();
 
     /* Main code */
+    clock_t program_start == clock();
     //TODO: Add call enclave here
+    printf("Total runtime: %.2fs\n", (clock() - program_start) / (float)CLOCKS_PER_SEC);    
     
     printf("Info: Destroying the enclave.\n");
 

@@ -37,7 +37,7 @@ SGX_ARCH ?= x64
 SGX_DEBUG ?= 0
 
 # Inlclude Path
-Local_Include_Path = include
+Local_Include_Path ?= Include
 
 ifeq ($(shell getconf LONG_BIT), 32)
 	SGX_ARCH := x86
@@ -87,7 +87,7 @@ endif
 App_Cpp_Files := App/App.cpp $(wildcard App/Edger8rSyntax/*.cpp) $(wildcard App/TrustedLibrary/*.cpp)
 App_Include_Paths := -I$(Local_Include_Path) -IApp -I$(SGX_SDK)/include
 
-App_C_Flags := -fPIC -Wno-attributes $(App_Include_Paths) $(SGX_COMMON_CFLAGS)
+App_C_Flags := $(App_Include_Paths) $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes 
 
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.

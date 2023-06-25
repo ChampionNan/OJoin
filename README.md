@@ -45,7 +45,7 @@ How to Build/Execute the C++14 sample program
     f. Simulation Mode, Release build:
         $ make SGX_MODE=SIM SGX_DEBUG=0
 4. Execute the binary directly:
-    $ ./OJion
+    $ ./OJoin.elf
 5. Remember to "make clean" before switching build mode
 
 -------------------------------------------------
