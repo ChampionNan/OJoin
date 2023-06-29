@@ -93,13 +93,14 @@ namespace Algorithm {
   }
 
   template <typename T, int (*ind_func)(T e)>
-  void obli_distribute(int64_t size, int64_t new_size, int tableId) {
+  void obli_distribute(int64_t size, int64_t m, int tableId) {
     callBiSort<T, ind_func_comp<T, ind_func>>(tableId, size);
-    OcallResize(tableId, new_size, 0);
+    OcallResize(tableId, m, 0);
+    int64_t j = getPow2Lt(m);
     int64_t boundary = ceil(1.0 * (m - j - 1) / params.B);
     T *block1 = new T[params.B];
     T *block2 = new T[params.B];
-    for (int64_t j = getPow2Lt(new_size); j >= 1; j /= 2) {
+    for (; j >= 1; j /= 2) {
       for (int i = boundary - 1; i >= 0; i--) {
         int secSize = (i == boundary - 1) ? (m - j - 1) - i * params.B : params.B;
         ScanBlock<T>(i * params.B, block1, secSize, tableId, 0);
@@ -139,7 +140,7 @@ namespace Algorithm {
       for (int64_t i = 0; i < boundary; ++i) {
         secSize = (i == boundary - 1) ? size - i * params.M : params.M;
         ScanBlock<TableEntry>(i * params.M, data, secSize, tableId, 0);
-        for (int64_t j = 0; j < secSize ++j) {
+        for (int64_t j = 0; j < secSize; ++j) {
           int64_t weight = weight_func(data[j]);
           if (weight == 0) data[j].entry_type = EMPTY_ENTRY;
           else data[j].index = csum;

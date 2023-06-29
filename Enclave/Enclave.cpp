@@ -18,6 +18,6 @@ void printf(const char *fmt, ...)
 
 void callEnclave(int *tableIds, int64_t n0, int64_t n1, int64_t N, int64_t M, int B) {
   printf("Enclave begin\n");
-  join(tableIds[0], tableIds[1], tableIds[2], n0 + n1, n0, n1);
+  Algorithm::join(tableIds[0], tableIds[1], tableIds[2], n0 + n1, n0, n1);
   printf("Enclave end\n");
 }

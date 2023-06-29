@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <time.h>
+#include <chrono>
 
 #include "sgx_urts.h"
 #include "App.h"
@@ -166,6 +167,13 @@ void ocall_print_string(const char *str)
      * the input string to prevent buffer overflow. 
      */
     printf("%s", str);
+}
+
+uint64_t ocall_measure_time(void) {
+  // returns linux-epoch-time in nanoseconds.
+  auto now_c = std::chrono::system_clock::now();
+  uint64_t ret = now_c.time_since_epoch().count();
+  return ret;
 }
 
 void OcallRead(int64_t index, int *buffer, int size, int tableId, int addrId) {

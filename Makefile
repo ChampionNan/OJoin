@@ -133,21 +133,8 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-BEARSSL_SOURCES := \
-	Enclave/bearssl/src/bearssl/aead/gcm.c \
-	Enclave/bearssl/src/bearssl/hash/ghash_pclmul.c \
-	Enclave/bearssl/src/bearssl/hash/sha2small.c \
-	Enclave/bearssl/src/bearssl/hash/sha1.c \
-	Enclave/bearssl/src/bearssl/codec/dec32be.c \
-	Enclave/bearssl/src/bearssl/codec/enc32be.c \
-	Enclave/bearssl/src/bearssl/mac/hmac.c \
-	Enclave/bearssl/src/bearssl/symcipher/aes_x86ni_ctr.c \
-	Enclave/bearssl/src/bearssl/symcipher/aes_x86ni.c
-
-Enclave_C_Files := $(BEARSSL_SOURCES) 
-
 Enclave_Cpp_Files := Enclave/Enclave.cpp $(wildcard Enclave/TrustedLibrary/*.cpp)
-Enclave_Include_Paths := -I$(Local_Include_Path) -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -IEnclave/bearssl/include -IEnclave/bearssl/src/bearssl
+Enclave_Include_Paths := -I$(Local_Include_Path) -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx 
 
 Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
 Enclave_Cpp_Flags := $(Enclave_C_Flags) $(SGX_COMMON_CXXFLAGS) -nostdinc++ -fopenmp
@@ -164,16 +151,13 @@ Enclave_Security_Link_Flags := -Wl,-z,relro,-z,now,-z,noexecstack
 # Otherwise, you may get some undesirable errors.
 Enclave_Link_Flags := $(Enclave_Security_Link_Flags) \
     -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
-	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
+	-Wl,--whole-archive -lsgx_tswitchless -l$(Trts_Library_Name) -Wl,--no-whole-archive \
 	-Wl,--start-group -lsgx_tstdc -lsgx_tcxx -lsgx_omp -lsgx_pthread -l$(Crypto_Library_Name) -l$(Service_Library_Name) -Wl,--end-group \
-	-ldl  /usr/lib/x86_64-linux-gnu/libssl.so  /usr/lib/x86_64-linux-gnu/libcrypto.so \
-	 -Wl,--end-group \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
-	-Wl,--defsym,__ImageBase=0 \
+	-Wl,--defsym,__ImageBase=0 -Wl,--gc-sections \
 	-Wl,--version-script=$(Enclave_Version_Script)
 
-Enclave_C_Objects := $(Enclave_C_Files:.c=.o)
 Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
 
 Enclave_Name := enclave.so
@@ -273,12 +257,9 @@ Enclave/%.o: Enclave/%.cpp
 	@$(CXX) $(SGX_COMMON_CXXFLAGS) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-$(Enclave_C_Objects): %.o: %.c Enclave/Enclave_t.h
-	@$(CC) $(SGX_COMMON_CFLAGS) $(Enclave_C_Flags) -c $< -o $@
-
 $(Enclave_Cpp_Objects): Enclave/Enclave_t.h
 
-$(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects) $(Enclave_C_Objects)
+$(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Enclave_Link_Flags)
 	@echo "LINK =>  $@"
 

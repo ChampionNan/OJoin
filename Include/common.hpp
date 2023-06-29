@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <cstring>
 #include <math.h>
-#include <ctime>
 #include <assert.h>
 #include <algorithm>
 
@@ -16,12 +15,19 @@ namespace eServer {
     int64_t N, M;
     int B, sigma, nonEnc;
     double IOcost, IOtime;
-    clock_t start, end;
+    uint64_t start, end;
+
+    Params() {}
 
     Params(int64_t N, int64_t M, int B, int sigma, int nonEnc = 0) : N(N), M(M), B(B), sigma(sigma), nonEnc(nonEnc), IOcost(0), IOtime(0) {}
   };
-  // Settings for the common algorithm
+
   Params params;
+
+  // Settings for the common algorithm, call at the beginning of the program
+  void setParams(int64_t N, int64_t M, int B, int sigma, int nonEnc = 0) {
+    params = Params(N, M, B, sigma, nonEnc);
+  }
 
   // Main algorithms
   double getIOcost() {
@@ -35,21 +41,21 @@ namespace eServer {
   // R&W data
   template <typename T>
   void ReadPage(int64_t startIdx, T* buffer, int pageSize, int tableId, int addrId = 0) {
-    if (pageSize == 0) return 0;
+    if (pageSize == 0) return ;
     OcallRead(startIdx, (int*)buffer, pageSize, tableId, addrId);
     if (!params.nonEnc) {
       for (int i = 0; i < pageSize; ++i) {
-        gcm_decrypt(const_cast<uint8_t*>(buffer + i), const_cast<uint8_t*>(buffer + i), sizeof(T));
+        gcm_decrypt((uint8_t*)(buffer + i), (uint8_t*)(buffer + i), sizeof(T));
       }
     }
   }
 
   template <typename T>
   void WritePage(int64_t startIdx, T* buffer, int pageSize, int tableId, int addrId = 0) {
-    if (pageSize == 0) return 0;
+    if (pageSize == 0) return ;
     if (!params.nonEnc) {
       for (int i = 0; i < pageSize; ++i) {
-        gcm_encrypt(const_cast<uint8_t*>(buffer + i), const_cast<uint8_t*>(buffer + i), sizeof(T));
+        gcm_encrypt((uint8_t*)(buffer + i), (uint8_t*)(buffer + i), sizeof(T));
       }
     }
     OcallWrite(startIdx, (int*)buffer, pageSize, tableId, addrId);
@@ -58,7 +64,7 @@ namespace eServer {
   template <typename T>
   void ScanBlock(int64_t index, T* block, int64_t eleNum, int tableId, int write, int64_t dummyNum = 0, int addrId = 0) {
     assert(dummyNum >= 0 && "Dummy number should be non-negative");
-    params.start = clock();
+    ocall_measure_time(&(params.start));
     if (eleNum + dummyNum == 0) return ;
     int64_t boundary = ceil(1.0 * eleNum / params.B);
     params.IOcost += boundary;
@@ -85,7 +91,7 @@ namespace eServer {
         delete[] junk;
       }
     }
-    params.end = clock();
+    ocall_measure_time(&(params.end));
     params.IOtime += params.end - params.start;
   }
 }

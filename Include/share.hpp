@@ -2,6 +2,7 @@
 #define SHARE_HPP
 
 #include <cstdint>
+#include <stdio.h>
 #include <random>
 
 using namespace std;
