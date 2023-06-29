@@ -147,10 +147,10 @@ BEARSSL_SOURCES := \
 Enclave_C_Files := $(BEARSSL_SOURCES) 
 
 Enclave_Cpp_Files := Enclave/Enclave.cpp $(wildcard Enclave/TrustedLibrary/*.cpp)
-Enclave_Include_Paths := -I$(Local_Include_Path) -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx 
+Enclave_Include_Paths := -I$(Local_Include_Path) -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -IEnclave/bearssl/include -IEnclave/bearssl/src/bearssl
 
 Enclave_C_Flags := -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)
-Enclave_Cpp_Flags := $(Enclave_C_Flags) $(SGX_COMMON_CXXFLAGS) -nostdinc++ -DNOOPENSSL -fopenmp
+Enclave_Cpp_Flags := $(Enclave_C_Flags) $(SGX_COMMON_CXXFLAGS) -nostdinc++ -fopenmp
 
 # Enable the security flags
 Enclave_Security_Link_Flags := -Wl,-z,relro,-z,now,-z,noexecstack

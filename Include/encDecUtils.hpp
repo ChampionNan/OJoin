@@ -1,8 +1,21 @@
 #ifndef ENCDECUTILS_HPP
 #define ENCDECUTILS_HPP
 
-#include <cstdio>
-#include <assert.h>
+#include <cassert>
+#include "common/defs.hpp"
+#include <random>
+#ifdef ENCLAVE_MODE
+#include "bearssl_rand.h"
+#include "sgx_trts.h"
+#endif
+
+#include "bearssl_aead.h"
+#include "bearssl_hash.h"
+#include <x86intrin.h>
+#define memset_s(s, smax, c, n) memset(s, c, n);
+
+#define SGXSD_AES_GCM_IV_SIZE   12
+#define SGXSD_AES_GCM_KEY_SIZE  32
 
 namespace eServer {
 
@@ -23,10 +36,62 @@ Settings setting;
 void aes_init() {
   static int init = 0;
   if (init == 0) {
-    OpenSSL_add_all_ciphers();
+    // OpenSSL_add_all_ciphers();
     init = 1;
   }
 }
+
+void __attribute__ ((noinline)) sgxsd_br_clear_stack() {
+    uint8_t stack[4096];
+    memset_s(&stack, sizeof(stack), 0, sizeof(stack));
+    _mm256_zeroall();
+}
+
+sgx_status_t sgxsd_aes_gcm_run(bool encrypt, const uint8_t p_key[SGXSD_AES_GCM_KEY_SIZE],
+                               const void *p_src, uint32_t src_len, void *p_dst,
+                               const uint8_t p_iv[SGXSD_AES_GCM_KEY_SIZE],
+                               const void *p_aad, uint32_t aad_len,
+                               uint8_t p_mac[SGXSD_AES_GCM_KEY_SIZE]) {
+    if (p_key == NULL ||
+	((p_src == NULL || p_dst == NULL) && src_len != 0) ||
+        p_iv == NULL ||
+        (p_aad == NULL && aad_len != 0) ||
+        p_mac == NULL) {
+	return SGX_ERROR_INVALID_PARAMETER;
+    }
+    br_aes_x86ni_ctr_keys aes_ctx;
+    br_aes_x86ni_ctr_init(&aes_ctx, p_key, SGXSD_AES_GCM_KEY_SIZE);
+    br_gcm_context aes_gcm_ctx;
+    br_gcm_init(&aes_gcm_ctx, &aes_ctx.vtable, &br_ghash_pclmul);
+    br_gcm_reset(&aes_gcm_ctx, p_iv, SGXSD_AES_GCM_IV_SIZE);
+    if (aad_len != 0) {
+        br_gcm_aad_inject(&aes_gcm_ctx, p_aad, aad_len);
+    }
+    br_gcm_flip(&aes_gcm_ctx);
+    if (src_len != 0) {
+        memmove(p_dst, p_src, src_len);
+        br_gcm_run(&aes_gcm_ctx, encrypt, p_dst, src_len);
+    }
+    bool tag_res;
+    if (encrypt) {
+      br_gcm_get_tag(&aes_gcm_ctx, p_mac);
+      tag_res = true;
+    } else {
+      tag_res = br_gcm_check_tag(&aes_gcm_ctx, p_mac);
+    }
+    sgxsd_br_clear_stack();
+    memset_s(&aes_ctx, sizeof(aes_ctx), 0, sizeof(aes_ctx));
+    memset_s(&aes_gcm_ctx, sizeof(aes_gcm_ctx), 0, sizeof(aes_gcm_ctx));
+    if (tag_res) {
+        return SGX_SUCCESS;
+    } else {
+        if (p_dst != NULL) {
+            memset_s(p_dst, src_len, 0, src_len);
+        }
+        return SGX_ERROR_MAC_MISMATCH;
+    }
+}
+
 
 void gcm_encrypt(uint8_t *plaintext, uint8_t *ciphertext,
                          uint64_t plaintextSize,
@@ -36,21 +101,10 @@ void gcm_encrypt(uint8_t *plaintext, uint8_t *ciphertext,
 
   aes_init();
 
-  size_t enc_length = ((plaintextSize + 15) / 16) * 16;
-
-  int actual_size = 0, final_size = 0;
-  EVP_CIPHER_CTX *e_ctx = EVP_CIPHER_CTX_new();
-  EVP_CIPHER_CTX_ctrl(e_ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL);
-  EVP_CIPHER_CTX_set_padding(e_ctx, 0);
-  EVP_EncryptInit(e_ctx, EVP_aes_256_gcm(), key, iv);
-
-  EVP_EncryptUpdate(e_ctx, ciphertext, &actual_size, plaintext, plaintextSize);
-  int ok = EVP_EncryptFinal(e_ctx, &ciphertext[actual_size], &final_size);
-  assert(final_size <= enc_length);
-  EVP_CIPHER_CTX_ctrl(e_ctx, EVP_CTRL_GCM_GET_TAG, 16, tag);
-  EVP_CIPHER_CTX_free(e_ctx);
-  assert(ok == 1);
+  sgxsd_aes_gcm_run(true, key, plaintext, plaintextSize, ciphertext, iv, nullptr, 0, tag);
 }
+
+
 
 void gcm_decrypt(uint8_t *ciphertext, uint8_t *plaintext,
                          uint64_t ciphertextSize,
@@ -58,20 +112,9 @@ void gcm_decrypt(uint8_t *ciphertext, uint8_t *plaintext,
                          uint8_t *iv = setting.iv,
                          uint8_t *tag = setting.tag) {
   aes_init();
-
-  // UNDONE(): Make sure this is using aesni
-  
-  int actual_size = 0, final_size = 0;
-  EVP_CIPHER_CTX *d_ctx = EVP_CIPHER_CTX_new();
-  EVP_CIPHER_CTX_ctrl(d_ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL);
-  EVP_CIPHER_CTX_set_padding(d_ctx, 0);
-  EVP_DecryptInit(d_ctx, EVP_aes_256_gcm(), key, iv);
-  EVP_DecryptUpdate(d_ctx, plaintext, &actual_size, ciphertext, ciphertextSize);
-  EVP_CIPHER_CTX_ctrl(d_ctx, EVP_CTRL_GCM_SET_TAG, 16, tag);
-  int ok;
-  ok = EVP_DecryptFinal(d_ctx, &plaintext[actual_size], &final_size);
-  EVP_CIPHER_CTX_free(d_ctx);
-  assert(ok == 1);
+  bool flag = sgxsd_aes_gcm_run(false, key, ciphertext, ciphertextSize, plaintext, iv, nullptr, 0, tag);
+  assert(flag == true && "Decryption failed\n"); 
+}
 }
 
 }

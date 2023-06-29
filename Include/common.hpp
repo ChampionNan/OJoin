@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <math.h>
-#include <time.h>
+#include <ctime>
 #include <assert.h>
 #include <algorithm>
 
