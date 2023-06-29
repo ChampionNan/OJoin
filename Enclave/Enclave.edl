@@ -14,16 +14,23 @@ enclave {
     from "TrustedLibrary/Thread.edl" import *;
     
     trusted {
-        /*public void process_input([in, size=len] char *buf, size_t len);*/
+        public void callEnclave(
+          [in, count=3]int *tableIds, int64_t n0, int64_t n1, int64_t N, int64_t M, int B);
     };
 
-    /* 
-     * ocall_print_string - invokes OCALL to display string buffer inside the enclave.
-     *  [in]: copy the string buffer to App outside.
-     *  [string]: specifies 'str' is a NULL terminated buffer.
-     */
     untrusted {
         void ocall_print_string([in, string] const char *str);
+        void OcallRead(
+          int64_t index,
+          [out, count=size]int *buffer,
+          int size, 
+          int tableId, int addrId);
+        void OcallWrite(
+          int64_t index, 
+          [in, count=size]int *buffer,
+          int size, 
+          int tableId, int addrId);
+        void OcallResize(int stableId, int64_t new_size, int addrId);
     };
 
 };

@@ -12,6 +12,13 @@
 
 #include <sgx_uswitchless.h>
 
+#include "table.hpp"
+#include "preprocess.hpp"
+
+// Initialization for input tables
+
+Table<TableEntry> *tables[3];
+
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t global_eid = 0;
 
@@ -161,6 +168,18 @@ void ocall_print_string(const char *str)
     printf("%s", str);
 }
 
+void OcallRead(int64_t index, int *buffer, int size, int tableId, int addrId) {
+  tables[tableId]->read(index, size, (TableEntry*)buffer, addrId);
+}
+
+void OcallWrite(int64_t index, int *buffer, int size, int tableId, int addrId) {
+  tables[tableId]->write(index, size, (TableEntry*)buffer, addrId);
+}
+
+void OcallResize(int tableId, int64_t new_size, int addrId) {
+  tables[tableId]->resize(new_size, addrId);
+}
+
 
 /* Application entry */
 int SGX_CDECL main(int argc, char *argv[])
@@ -175,21 +194,22 @@ int SGX_CDECL main(int argc, char *argv[])
         getchar();
         return -1; 
     }
- 
-    /* Utilize edger8r attributes */
-    edger8r_array_attributes();
-    edger8r_pointer_attributes();
-    edger8r_type_attributes();
-    edger8r_function_attributes();
     
     /* Utilize trusted libraries */
     ecall_libc_functions();
     ecall_libcxx_functions();
-    //ecall_thread_functions();
+    ecall_thread_functions();
 
     /* Main code */
-    clock_t program_start == clock();
-    //TODO: Add call enclave here
+    /* Initialization & Preprocess */
+    int64_t n0, n1, N, M;
+    int B;
+    int tableId = 0, tableId0 = 1, tableId1 = 2;
+    int tableIds[3] = {tableId, tableId0, tableId1};
+    parseTables(tables, n0, n1);
+    /* Join process */
+    clock_t program_start = clock();
+    callEnclave(global_eid, tableIds, n0, n1, N, M, B);
     printf("Total runtime: %.2fs\n", (clock() - program_start) / (float)CLOCKS_PER_SEC);    
     
     printf("Info: Destroying the enclave.\n");
